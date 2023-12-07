@@ -3,6 +3,7 @@ import openai
 import streamlit as st
 import requests
 import time
+from PIL import Image
 from dotenv import load_dotenv
 import os
 import re
@@ -15,11 +16,14 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 # Set your OpenAI Assistant ID here
 assistant_id = os.getenv("OPENAI_LINKEDIN_ASSISTANT_ID")
-instruction = """As a 'LinkedIn Content Specialist' for AgentGPT, your primary responsibility is to generate three distinct, long-form LinkedIn post variants for each user request. These posts should be detailed and expansive, maximizing the 3000-character limit of LinkedIn to provide comprehensive and engaging content. Your creations will reflect professional standards suitable for LinkedIn, covering a wide range of themes as per user input, like business insights, industry news, thought leadership, career advice, or inspirational stories.
+instruction = """As the 'LinkedIn Content Specialist' at AgentGPT, your primary role is to assist users in creating professional and engaging content specifically for LinkedIn. This involves crafting comprehensive, long-form LinkedIn posts that adhere to the platform's standards. You will focus on a variety of themes such as business insights, industry news, thought leadership, career advice, or inspirational stories, based on the type of content the user desires. Each post you create will maximize the 3000-character limit, ensuring it is detailed and expansive.
 
-Once you receive a user's input, you will create three diverse post options, ensuring each is extensive and detailed, similar to the provided examples. These posts will be presented in double quotes for clarity and professionalism.
+Your responsibility includes generating a single, detailed post variant for each user request. These posts will be structured to be relevant, engaging, and suitable for the LinkedIn audience. You will adapt your responses to the specific context of the user's needs, aiming to create ideal LinkedIn-specific content while ensuring user satisfaction. Users will provide clear, detailed input about their desired content and offer feedback to refine your output.
 
-After a user selects a post, you will return their chosen option, also enclosed in double quotes, matching their preferences and the comprehensive style of the examples given. Your adaptability to each user's specific needs is vital, aiming to deliver optimal, LinkedIn-specific content that maximizes user engagement and satisfaction on the platform."""
+Importantly, each post you create will be consistently presented in double quotes to maintain clarity and professionalism, making the content easily identifiable as a complete, ready-to-use post.
+
+- Generate a single detailed LinkedIn Post, up to 3000 characters, covering a wide range of professional themes, and present it in double quotes.
+- The `generate_image` function will be utilized strictly upon explicit user request to create an image that complements their LinkedIn post. This ensures that images are only generated when specifically asked for, aligning with user preferences and enhancing the content's visual appeal."""
 
 client = openai
 # Initialize session state variables for file IDs and chat control
@@ -38,22 +42,38 @@ st.set_page_config(page_title="Linkedin Content Creator", page_icon=":speech_bal
 
 def extract_text(text):
     matches = re.findall(r'"([^"]*)"', text)
-    if matches:
-        st.session_state.extracted_text = matches[0]  # First occurrence
-        print("Extracted text:", st.session_state.extracted_text)
-    else:
-        print("No text found within double quotes.")
+    st.session_state.extracted_text = matches[0] if matches else None
+    print("Extracted text:", st.session_state.extracted_text)
+
+
+def process_message_with_citations(message):
+    return message.content[0].text.value
+
+
+def generate_image(prompt, size="1024x1024"):
+    response = client.images.generate(
+        model="dall-e-3", prompt=prompt, size=size, n=1, quality="standard"
+    )
+    path = os.path.join("./dalle", str(round(time.time() * 1000)) + ".png")
+    image_url = response.data[0].url
+    Image.open(requests.get(image_url, stream=True).raw).save(path)
+    st.session_state.image_paths.append(path)
+    st.session_state.image_count += 1
+    return image_url
 
 
 def post_linkedin():
     url = "https://replyrocket-flask.onrender.com/post"
-    data = {
+    headers = {
+        "Content-Type": "application/json",
+    }
+    body = {
         "access_token": "AQUOSL3LqJf3EEVLrv6mE1OEDNG17AUx8urUKiy9krA86_AL4Sioi1yFV8VEW9BULrkd65lMasSy_I7h2YoFeb876Hl0HCB0PGOPqd0JxzRIe_JtcSJIQkH87Wx9yVFQU48bUIT3-7WBeQ5A4_Q2AUS3SxmWZ_nnBtecjACrT0MSMLzKXW3hJqk7EoEkm0vSeC3WVkpOkrHinNix2mYJ415mabBMMdSWDvb2u3hqsEpWdP2Jrmd6g2KiJ_v_lHEO5mNgdob8LdfnISPdqJsIjNRjiJ_urxdiU9hwLRIAflJm4TPlK2lRKX_nAXPjQ8ycS1DYKTJSKi61Bi6LL68CXVZFqOn3Uw",
         "linkedin_id": "kFeIRZdelq",
-        "content": "Remote Work: Embracing the Future of Work-Life Balance and Productivity\n\nThe landscape of work has undergone a remarkable transformation in recent years, with remote work emerging as a predominant trend reshaping the traditional 9-5 office dynamic. As we navigate through this paradigm shift, it's crucial to recognize the multifaceted impact of remote work on individuals, organizations, and the broader economy.\n\nFirst and foremost, remote work has redefined the work-life balance for professionals across industries. By eliminating the daily commute and offering a more flexible schedule, remote work enables employees to reclaim valuable time that would have otherwise been spent traveling to and from the office. This newfound flexibility not only enhances personal well-being but also allows individuals to allocate more time to their families, hobbies, and other non-work-related pursuits. As a result, remote work fosters a more harmonious integration of professional and personal life, contributing to improved overall job satisfaction and mental health.\n\nFrom an organizational standpoint, the benefits of remote work are equally compelling. Companies have experienced significant cost savings by scaling down their physical office spaces and adopting remote-friendly policies. Moreover, remote work has broadened the talent pool, enabling organizations to recruit top-tier professionals regardless of geographical constraints. This diversity in talent not only enriches the workforce but also brings forth a spectrum of fresh perspectives and innovative ideas, ultimately propelling businesses towards greater success.\n\nDespite these advantages, it's important to acknowledge the challenges associated with remote work, such as maintaining team cohesiveness, combating feelings of isolation, and establishing effective communication channels. As we continue to embrace remote work, it remains imperative for organizations to invest in robust virtual collaboration tools, prioritize regular team check-ins, and cultivate a supportive remote work culture.\n\nIn conclusion, remote work represents a pivotal evolution in the way we approach work, offering unparalleled flexibility, cost-efficiency, and access to a global talent pool. As professionals and organizations adapt to this new paradigm, it's essential to harness the opportunities presented by remote work while proactively addressing its inherent challenges. By doing so, we can usher in an era where work thrives beyond the confines of traditional offices, empowering individuals to achieve a harmonious blend of professional achievement and personal fulfillment.",
+        "content": st.session_state.extracted_text,
     }
     try:
-        response = requests.post(url, data=data)
+        response = requests.post(url, json=body, headers=headers, timeout=10000)
         if response.status_code == 200:
             return "Post successful!"
         else:
@@ -62,29 +82,58 @@ def post_linkedin():
         return f"An error occurred: {str(e)}"
 
 
-# Button to start the chat session
+def linkedin_post():
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if len(st.session_state.image_paths) > 0:
+        data = {
+            "access_token": "AQUOSL3LqJf3EEVLrv6mE1OEDNG17AUx8urUKiy9krA86_AL4Sioi1yFV8VEW9BULrkd65lMasSy_I7h2YoFeb876Hl0HCB0PGOPqd0JxzRIe_JtcSJIQkH87Wx9yVFQU48bUIT3-7WBeQ5A4_Q2AUS3SxmWZ_nnBtecjACrT0MSMLzKXW3hJqk7EoEkm0vSeC3WVkpOkrHinNix2mYJ415mabBMMdSWDvb2u3hqsEpWdP2Jrmd6g2KiJ_v_lHEO5mNgdob8LdfnISPdqJsIjNRjiJ_urxdiU9hwLRIAflJm4TPlK2lRKX_nAXPjQ8ycS1DYKTJSKi61Bi6LL68CXVZFqOn3Uw",
+            "linkedin_id": "kFeIRZdelq",
+            "content": st.session_state.extracted_text,
+        }
+        url = "https://replyrocket-flask.onrender.com/upload"
+        try:
+            with open(st.session_state.image_paths[-1], "rb") as file:
+                files = {"file": file}
+                response = requests.post(url, files=files, data=data, timeout=10000)
+                if response.status_code == 200:
+                    return "Post successful!"
+                else:
+                    return f"Failed to post. Status code: {response.status_code}"
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
+    else:
+        body = {
+            "access_token": "AQUOSL3LqJf3EEVLrv6mE1OEDNG17AUx8urUKiy9krA86_AL4Sioi1yFV8VEW9BULrkd65lMasSy_I7h2YoFeb876Hl0HCB0PGOPqd0JxzRIe_JtcSJIQkH87Wx9yVFQU48bUIT3-7WBeQ5A4_Q2AUS3SxmWZ_nnBtecjACrT0MSMLzKXW3hJqk7EoEkm0vSeC3WVkpOkrHinNix2mYJ415mabBMMdSWDvb2u3hqsEpWdP2Jrmd6g2KiJ_v_lHEO5mNgdob8LdfnISPdqJsIjNRjiJ_urxdiU9hwLRIAflJm4TPlK2lRKX_nAXPjQ8ycS1DYKTJSKi61Bi6LL68CXVZFqOn3Uw",
+            "linkedin_id": "kFeIRZdelq",
+            "content": st.session_state.extracted_text,
+        }
+        url = "https://replyrocket-flask.onrender.com/post"
+        try:
+            response = requests.post(url, json=body, headers=headers, timeout=10000)
+            if response.status_code == 200:
+                return "Post successful!"
+            else:
+                return f"Failed to post. Status code: {response.status_code}"
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
+
+
+# Start Chat Button
 if st.sidebar.button("Start Chat"):
     st.session_state.start_chat = True
-    # Create a thread once and store its ID in session state
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
-    st.write("thread id: ", thread.id)
-    # else:
-    #     st.sidebar.warning("Please upload at least one file to start the chat.")
-
-
-# Define the function to process messages with citations
-def process_message_with_citations(message):
-    """Extract content and annotations from the message and format citations as footnotes."""
-    message_content = message.content[0].text
-    # Add footnotes to the end of the message content
-    full_response = message_content.value
-    return full_response
-
+    st.write("Thread ID: ", thread.id)
 
 # Main chat interface setup
-st.title("Linkedin Content Creator")
-st.write("I can create your posts and content for you")
+st.title("Agent Baani")
+st.write(
+    """As an AI copilot  for making posts on Social Media, I will assist you with making an engaging copy.
+
+*Made By Juggernot.ai* """
+)
 
 # Only show the chat interface if the chat has been started
 if st.session_state.start_chat:
@@ -92,10 +141,18 @@ if st.session_state.start_chat:
         st.session_state.messages = []
     if "extracted_text" not in st.session_state:
         st.session_state.extracted_text = ""
+    if "image_count_temp" not in st.session_state:
+        st.session_state.image_count_temp = 0
+    if "image_paths" not in st.session_state:
+        st.session_state.image_paths = []
+    if "image_count" not in st.session_state:
+        st.session_state.image_count = 0
 
     # Display existing messages in the chat
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
+            if "image" in message:
+                st.image(message["image"])
             st.markdown(message["content"])
 
     # Chat input for the user
@@ -106,7 +163,7 @@ if st.session_state.start_chat:
             st.markdown(prompt)
 
         if prompt.startswith("!post"):
-            res = post_linkedin()
+            res = linkedin_post()
             st.session_state.messages.append({"role": "assistant", "content": res})
             with st.chat_message("assistant"):
                 st.markdown(res)
@@ -184,39 +241,78 @@ if st.session_state.start_chat:
             client.beta.threads.messages.create(
                 thread_id=st.session_state.thread_id, role="user", content=prompt
             )
-
-            # Create a run with additional instructions
             run = client.beta.threads.runs.create(
                 thread_id=st.session_state.thread_id,
                 assistant_id=assistant_id,
                 instructions=instruction,
+                tools=[
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "generate_image",
+                            "description": "generate image by Dall-e 3",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "prompt": {
+                                        "type": "string",
+                                        "description": "The prompt to generate image",
+                                    },
+                                    "size": {
+                                        "type": "string",
+                                        "enum": ["1024x1024", "other_sizes"],
+                                    },
+                                },
+                                "required": ["prompt"],
+                            },
+                        },
+                    }
+                ],
             )
 
-            # Poll for the run to complete and retrieve the assistant's messages
             while run.status != "completed":
                 time.sleep(1)
                 run = client.beta.threads.runs.retrieve(
                     thread_id=st.session_state.thread_id, run_id=run.id
                 )
+                if run.status == "requires_action":
+                    tool_call = run.required_action.submit_tool_outputs.tool_calls[0]
+                    if tool_call.function.name == "generate_image":
+                        prompt = json.loads(tool_call.function.arguments)["prompt"]
+                        image_url = generate_image(prompt)
+                        client.beta.threads.runs.submit_tool_outputs(
+                            thread_id=st.session_state.thread_id,
+                            run_id=run.id,
+                            tool_outputs=[
+                                {"tool_call_id": tool_call.id, "output": image_url}
+                            ],
+                        )
 
-            # Retrieve messages added by the assistant
             messages = client.beta.threads.messages.list(
                 thread_id=st.session_state.thread_id
             )
-
-            # Process and display assistant messages
-            assistant_messages_for_run = [
-                message
-                for message in messages
-                if message.run_id == run.id and message.role == "assistant"
-            ]
-            for message in assistant_messages_for_run:
+            for message in [
+                m for m in messages if m.run_id == run.id and m.role == "assistant"
+            ]:
                 full_response = process_message_with_citations(message)
                 extract_text(full_response)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": full_response}
-                )
-                with st.chat_message("assistant"):
-                    st.markdown(full_response, unsafe_allow_html=True)
+                if st.session_state.image_count > st.session_state.image_count_temp:
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": full_response,
+                            "image": st.session_state.image_paths[-1],
+                        }
+                    )
+                    with st.chat_message("assistant"):
+                        st.image(st.session_state.image_paths[-1])
+                        st.markdown(full_response, unsafe_allow_html=True)
+                    st.session_state.image_count_temp += 1
+                else:
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": full_response}
+                    )
+                    with st.chat_message("assistant"):
+                        st.markdown(full_response, unsafe_allow_html=True)
 else:
     st.write("Please click 'Start Chat' to begin the conversation.")
