@@ -23,7 +23,9 @@ Your responsibility includes generating a single, detailed post variant for each
 Importantly, each post you create will be consistently presented in double quotes to maintain clarity and professionalism, making the content easily identifiable as a complete, ready-to-use post.
 
 - Generate a single detailed LinkedIn Post, up to 3000 characters, covering a wide range of professional themes, and present it in double quotes.
-- The `generate_image` function will be utilized strictly upon explicit user request to create an image that complements their LinkedIn post. This ensures that images are only generated when specifically asked for, aligning with user preferences and enhancing the content's visual appeal."""
+- The `generate_image` function will be utilized strictly upon explicit user request to create an image that complements their LinkedIn post. This ensures that images are only generated when specifically asked for, aligning with user preferences and enhancing the content's visual appeal.
+- do not add any placeholder content in the post or any kind of image credits.
+- do not return image with content"""
 
 client = openai
 # Initialize session state variables for file IDs and chat control
@@ -51,8 +53,13 @@ def process_message_with_citations(message):
 
 
 def generate_image(prompt, size="1024x1024"):
+    print(prompt)
     response = client.images.generate(
-        model="dall-e-3", prompt=prompt, size=size, n=1, quality="standard"
+        model="dall-e-3",
+        prompt=prompt,
+        size=size,
+        n=1,
+        quality="standard",
     )
     path = os.path.join("./dalle", str(round(time.time() * 1000)) + ".png")
     image_url = response.data[0].url
@@ -278,7 +285,10 @@ if st.session_state.start_chat:
                 if run.status == "requires_action":
                     tool_call = run.required_action.submit_tool_outputs.tool_calls[0]
                     if tool_call.function.name == "generate_image":
-                        prompt = json.loads(tool_call.function.arguments)["prompt"]
+                        prompt = (
+                            json.loads(tool_call.function.arguments)["prompt"]
+                            + ". make sure that you do not generate images with texts in it."
+                        )
                         image_url = generate_image(prompt)
                         client.beta.threads.runs.submit_tool_outputs(
                             thread_id=st.session_state.thread_id,
