@@ -20,12 +20,11 @@ instruction = """As the 'LinkedIn Content Specialist' at AgentGPT, your primary 
 
 Your responsibility includes generating a single, detailed post variant for each user request. These posts will be structured to be relevant, engaging, and suitable for the LinkedIn audience. You will adapt your responses to the specific context of the user's needs, aiming to create ideal LinkedIn-specific content while ensuring user satisfaction. Users will provide clear, detailed input about their desired content and offer feedback to refine your output.
 
-Importantly, each post you create will be consistently presented in double quotes to maintain clarity and professionalism, making the content easily identifiable as a complete, ready-to-use post.
-
-- Generate a single detailed LinkedIn Post, up to 3000 characters, covering a wide range of professional themes, and present it in double quotes.
+- Generate a single detailed LinkedIn Post, up to 3000 characters, covering a wide range of professional themes.
 - The `generate_image` function will be utilized strictly upon explicit user request to create an image that complements their LinkedIn post. This ensures that images are only generated when specifically asked for, aligning with user preferences and enhancing the content's visual appeal.
-- do not add any placeholder content in the post or any kind of image credits.
-- do not return image with content"""
+- do not add any placeholder content in the post or any kind of image credits sunch as "[Image: Courtesy of OpenAI's DALL·E]".
+- do not return image with content
+- whenever user wants to make a post, use `make_post` function to post the content to linkedin"""
 
 client = openai
 # Initialize session state variables for file IDs and chat control
@@ -53,7 +52,6 @@ def process_message_with_citations(message):
 
 
 def generate_image(prompt, size="1024x1024"):
-    print(prompt)
     response = client.images.generate(
         model="dall-e-3",
         prompt=prompt,
@@ -69,34 +67,14 @@ def generate_image(prompt, size="1024x1024"):
     return image_url
 
 
-def post_linkedin():
-    url = "https://replyrocket-flask.onrender.com/post"
-    headers = {
-        "Content-Type": "application/json",
-    }
-    body = {
-        "access_token": "AQUOSL3LqJf3EEVLrv6mE1OEDNG17AUx8urUKiy9krA86_AL4Sioi1yFV8VEW9BULrkd65lMasSy_I7h2YoFeb876Hl0HCB0PGOPqd0JxzRIe_JtcSJIQkH87Wx9yVFQU48bUIT3-7WBeQ5A4_Q2AUS3SxmWZ_nnBtecjACrT0MSMLzKXW3hJqk7EoEkm0vSeC3WVkpOkrHinNix2mYJ415mabBMMdSWDvb2u3hqsEpWdP2Jrmd6g2KiJ_v_lHEO5mNgdob8LdfnISPdqJsIjNRjiJ_urxdiU9hwLRIAflJm4TPlK2lRKX_nAXPjQ8ycS1DYKTJSKi61Bi6LL68CXVZFqOn3Uw",
-        "linkedin_id": "kFeIRZdelq",
-        "content": st.session_state.extracted_text,
-    }
-    try:
-        response = requests.post(url, json=body, headers=headers, timeout=10000)
-        if response.status_code == 200:
-            return "Post successful!"
-        else:
-            return f"Failed to post. Status code: {response.status_code}"
-    except Exception as e:
-        return f"An error occurred: {str(e)}"
-
-
 def linkedin_post():
     headers = {
         "Content-Type": "application/json",
     }
     if len(st.session_state.image_paths) > 0:
         data = {
-            "access_token": "AQUOSL3LqJf3EEVLrv6mE1OEDNG17AUx8urUKiy9krA86_AL4Sioi1yFV8VEW9BULrkd65lMasSy_I7h2YoFeb876Hl0HCB0PGOPqd0JxzRIe_JtcSJIQkH87Wx9yVFQU48bUIT3-7WBeQ5A4_Q2AUS3SxmWZ_nnBtecjACrT0MSMLzKXW3hJqk7EoEkm0vSeC3WVkpOkrHinNix2mYJ415mabBMMdSWDvb2u3hqsEpWdP2Jrmd6g2KiJ_v_lHEO5mNgdob8LdfnISPdqJsIjNRjiJ_urxdiU9hwLRIAflJm4TPlK2lRKX_nAXPjQ8ycS1DYKTJSKi61Bi6LL68CXVZFqOn3Uw",
-            "linkedin_id": "kFeIRZdelq",
+            "access_token": os.getenv("LINKEDIN_ACCESS_TOKEN"),
+            "linkedin_id": os.getenv("LINKEDIN_ID"),
             "content": st.session_state.extracted_text,
         }
         url = "https://replyrocket-flask.onrender.com/upload"
@@ -112,8 +90,8 @@ def linkedin_post():
             return f"An error occurred: {str(e)}"
     else:
         body = {
-            "access_token": "AQUOSL3LqJf3EEVLrv6mE1OEDNG17AUx8urUKiy9krA86_AL4Sioi1yFV8VEW9BULrkd65lMasSy_I7h2YoFeb876Hl0HCB0PGOPqd0JxzRIe_JtcSJIQkH87Wx9yVFQU48bUIT3-7WBeQ5A4_Q2AUS3SxmWZ_nnBtecjACrT0MSMLzKXW3hJqk7EoEkm0vSeC3WVkpOkrHinNix2mYJ415mabBMMdSWDvb2u3hqsEpWdP2Jrmd6g2KiJ_v_lHEO5mNgdob8LdfnISPdqJsIjNRjiJ_urxdiU9hwLRIAflJm4TPlK2lRKX_nAXPjQ8ycS1DYKTJSKi61Bi6LL68CXVZFqOn3Uw",
-            "linkedin_id": "kFeIRZdelq",
+            "access_token": os.getenv("LINKEDIN_ACCESS_TOKEN"),
+            "linkedin_id": os.getenv("LINKEDIN_ID"),
             "content": st.session_state.extracted_text,
         }
         url = "https://replyrocket-flask.onrender.com/post"
@@ -123,6 +101,43 @@ def linkedin_post():
                 return "Post successful!"
             else:
                 return f"Failed to post. Status code: {response.status_code}"
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
+
+
+def make_post(text, pic=None):
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    body = {
+        "access_token": os.getenv("LINKEDIN_ACCESS_TOKEN"),
+        "linkedin_id": os.getenv("LINKEDIN_ID"),
+        "content": text,
+    }
+
+    if pic is None:
+        url = "https://replyrocket-flask.onrender.com/post"
+        try:
+            response = requests.post(url, json=body, headers=headers, timeout=10000)
+            if response.status_code == 200:
+                return "Post successful!"
+            else:
+                return f"Failed to post. Status code: {response.status_code}"
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
+    else:
+        url = "https://replyrocket-flask.onrender.com/upload"
+        try:
+            path = os.path.join("./dalle", str(round(time.time() * 1000)) + ".png")
+            Image.open(requests.get(pic, stream=True).raw).save(path)
+            with open(path, "rb") as file:
+                files = {"file": file}
+                response = requests.post(url, files=files, data=body, timeout=10000)
+                if response.status_code == 200:
+                    return "Post successful!"
+                else:
+                    return f"Failed to post. Status code: {response.status_code}"
         except Exception as e:
             return f"An error occurred: {str(e)}"
 
@@ -273,7 +288,28 @@ if st.session_state.start_chat:
                                 "required": ["prompt"],
                             },
                         },
-                    }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "make_post",
+                            "description": "make a post to linkedin",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {
+                                        "type": "string",
+                                        "description": "The linkedin post text content",
+                                    },
+                                    "image": {
+                                        "type": "string",
+                                        "description": "Image for the linkedin post generated by generate_image function",
+                                    },
+                                },
+                                "required": ["text", "image"],
+                            },
+                        },
+                    },
                 ],
             )
 
@@ -295,6 +331,22 @@ if st.session_state.start_chat:
                             run_id=run.id,
                             tool_outputs=[
                                 {"tool_call_id": tool_call.id, "output": image_url}
+                            ],
+                        )
+                    elif tool_call.function.name == "make_post":
+                        print("make post initiated...")
+                        text = json.loads(tool_call.function.arguments)["text"]
+                        pic = json.loads(tool_call.function.arguments)["image"]
+                        data = ""
+                        if pic != None:
+                            data = make_post(text, pic)
+                        else:
+                            data = make_post(text)
+                        client.beta.threads.runs.submit_tool_outputs(
+                            thread_id=st.session_state.thread_id,
+                            run_id=run.id,
+                            tool_outputs=[
+                                {"tool_call_id": tool_call.id, "output": data}
                             ],
                         )
 
