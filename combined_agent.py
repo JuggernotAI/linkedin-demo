@@ -6,10 +6,9 @@ import time
 from PIL import Image
 from dotenv import load_dotenv
 import os
-import re
 import notion_helper
-import json
 from datetime import datetime, timezone
+import json
 
 load_dotenv()
 
@@ -25,12 +24,14 @@ Your content creation will be strictly text-based unless a user specifically req
 Key Responsibilities:
 
 - Generate a single detailed LinkedIn Post, up to 3000 characters, covering a wide range of professional themes.
-- Craft diverse Twitter Posts, up to 280 characters, encompassing various genres including professional insights, casual musings, humor, and trending topics.
-- Await explicit instructions from the user before utilizing the 'make_post' function to publish content.
+- Craft diverse Twitter Posts, up to 280 characters, encompassing various genres including professional insights, casual musings, humour, and trending topics.
+- Await explicit instructions from the user before utilising the 'make_post' function to publish content.
 - Focus on text content creation, engaging in visual content creation only when specifically requested by the user.
-- Utilize the generate_image function only upon explicit user request for an image to complement their LinkedIn or Twitter post.
+- Utilise the generate_image function only upon explicit user request for an image to complement their LinkedIn or Twitter post.
 - Avoid adding any placeholder content in the post or any image credits such as "[Image: Courtesy of OpenAI's DALL·E]".
-- Utilize appropriate functions for posting the content to LinkedIn and Twitter only as per direct user requests."""
+- Utilise appropriate functions for posting the content to LinkedIn and Twitter only as per direct user requests.
+- Use the 'add_to_notion' function to schedule the posts, but only after receiving explicit user instructions and the preferred posting dates.
+- Ask users for their preferred date of posting for each platform when `add_to_notion` is initiated. also ensure that the output is formatted as "December 4, 2023"."""
 
 client = openai
 # Initialize session state variables for file IDs and chat control
@@ -44,7 +45,7 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
 
 # Set up the Streamlit page with a title and icon
-st.set_page_config(page_title="Linkedin Content Creator", page_icon=":speech_balloon:")
+st.set_page_config(page_title="Content Generator", page_icon=":speech_balloon:")
 
 
 def process_message_with_citations(message):
@@ -130,6 +131,75 @@ def make_post(linkedin_post, twitter_post, pic=None):
     return linkedin_data + "\n" + twitter_data
 
 
+def add_to_notion(
+    linkedin_post=None,
+    linkedin_post_date=None,
+    twitter_post=None,
+    twitter_post_date=None,
+    pic=None,
+):
+    data = {
+        "copy": {
+            "title": [
+                {
+                    "text": {"content": ""},
+                }
+            ]
+        },
+        "image": {
+            "rich_text": [
+                {
+                    "text": {"content": ""},
+                }
+            ]
+        },
+        "created_at": {
+            "date": {
+                "start": datetime.now(timezone.utc).date().isoformat(),
+                "end": None,
+            }
+        },
+        "post_date": {
+            "date": {
+                "start": "",
+                "end": None,
+            }
+        },
+        "status": {
+            "select": {
+                "name": "Not Published",
+            }
+        },
+        "platform": {
+            "select": {
+                "name": "",
+            }
+        },
+    }
+    res = ""
+    datetime_format = "%B %d, %Y"
+    if pic is not None:
+        data["image"]["rich_text"][0]["text"]["content"] = pic
+    if linkedin_post is not None:
+        data["copy"]["title"][0]["text"]["content"] = linkedin_post
+        data["platform"]["select"]["name"] = "Linkedin"
+        dt = datetime.strptime(linkedin_post_date, datetime_format)
+        formatted_date = dt.date().isoformat()
+        print(formatted_date)
+        data["post_date"]["date"]["start"] = formatted_date
+        res = notion_helper.create_page(data)
+    if twitter_post is not None:
+        data["copy"]["title"][0]["text"]["content"] = twitter_post
+        data["platform"]["select"]["name"] = "Twitter"
+        dt = datetime.strptime(twitter_post_date, datetime_format)
+        formatted_date = dt.date().isoformat()
+        print(formatted_date)
+        data["post_date"]["date"]["start"] = formatted_date
+        res = notion_helper.create_page(data)
+
+    return res
+
+
 # Start Chat Button
 if st.sidebar.button("Start Chat"):
     st.session_state.start_chat = True
@@ -161,7 +231,8 @@ if st.session_state.start_chat:
         with st.chat_message(message["role"]):
             if "image" in message:
                 st.image(message["image"])
-            st.markdown(message["content"])
+            if "content" in message:
+                st.markdown(message["content"])
 
     # Chat input for the user
     if prompt := st.chat_input("What is up?"):
@@ -225,6 +296,44 @@ if st.session_state.start_chat:
                         },
                     },
                 },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "add_to_notion",
+                        "description": "add data to notion",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "linkedin_post": {
+                                    "type": "string",
+                                    "description": "The linkedin post text content",
+                                },
+                                "linkedin_post_date": {
+                                    "type": "string",
+                                    "description": "date to post the content on linkedin in the format 'December 4, 2023'",
+                                },
+                                "twitter_post": {
+                                    "type": "string",
+                                    "description": "The twitter post text content",
+                                },
+                                "twitter_post_date": {
+                                    "type": "string",
+                                    "description": "date to post the content on twitter in the format 'December 4, 2023'",
+                                },
+                                "image": {
+                                    "type": "string",
+                                    "description": "Image URL of the post generated by generate_image function",
+                                },
+                            },
+                            "required": [
+                                "linkedin_post",
+                                "linkedin_post_date",
+                                "twitter_post",
+                                "twitter_post_date",
+                            ],
+                        },
+                    },
+                },
             ],
         )
         while run.status != "completed":
@@ -273,6 +382,50 @@ if st.session_state.start_chat:
                         run_id=run.id,
                         tool_outputs=[{"tool_call_id": tool_call.id, "output": data}],
                     )
+                elif tool_call.function.name == "add_to_notion":
+                    print("add to notion initiated...")
+                    linkedin_post = json.loads(tool_call.function.arguments).get(
+                        "linkedin_post", None
+                    )
+                    twitter_post = json.loads(tool_call.function.arguments).get(
+                        "twitter_post", None
+                    )
+                    twitter_post_date = json.loads(tool_call.function.arguments).get(
+                        "twitter_post_date", None
+                    )
+                    linkedin_post_date = json.loads(tool_call.function.arguments).get(
+                        "linkedin_post_date", None
+                    )
+                    pic = json.loads(tool_call.function.arguments).get("image", None)
+                    data = ""
+                    if pic is not None:
+                        path = os.path.join(
+                            "./dalle", str(round(time.time() * 1000)) + ".png"
+                        )
+                        Image.open(
+                            requests.get(pic, stream=True, timeout=10000).raw
+                        ).save(path)
+
+                        data = add_to_notion(
+                            linkedin_post,
+                            linkedin_post_date,
+                            twitter_post,
+                            twitter_post_date,
+                            path,
+                        )
+                    else:
+                        data = add_to_notion(
+                            linkedin_post,
+                            linkedin_post_date,
+                            twitter_post,
+                            twitter_post_date,
+                        )
+                    client.beta.threads.runs.submit_tool_outputs(
+                        thread_id=st.session_state.thread_id,
+                        run_id=run.id,
+                        tool_outputs=[{"tool_call_id": tool_call.id, "output": data}],
+                    )
+
         messages = client.beta.threads.messages.list(
             thread_id=st.session_state.thread_id
         )
@@ -284,13 +437,11 @@ if st.session_state.start_chat:
                 st.session_state.messages.append(
                     {
                         "role": "assistant",
-                        "content": full_response,
                         "image": st.session_state.image_paths[-1],
                     }
                 )
                 with st.chat_message("assistant"):
                     st.image(st.session_state.image_paths[-1])
-                    st.markdown(full_response, unsafe_allow_html=True)
                 st.session_state.image_count_temp += 1
             else:
                 st.session_state.messages.append(

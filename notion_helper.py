@@ -46,4 +46,5 @@ def create_page(data: dict):
     payload = {"parent": {"database_id": DATABASE_ID}, "properties": data}
 
     res = requests.post(url, json=payload, headers=headers)
-    return res
+    print(res.status_code)
+    return res.status_code
