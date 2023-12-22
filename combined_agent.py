@@ -91,29 +91,22 @@ def post_on_twitter(twitter_post, pic=None):
 
 
 def post_on_linkedin(text, pic=None):
-    headers = {
-        "Content-Type": "application/json",
-    }
-
     body = {
         "access_token": os.getenv("LINKEDIN_ACCESS_TOKEN"),
         "linkedin_id": os.getenv("LINKEDIN_ID"),
         "content": text,
     }
 
-    if pic is None:
-        url = "https://replyrocket-flask.onrender.com/post"
-        try:
-            response = requests.post(url, json=body, headers=headers, timeout=10000)
+    url = "https://replyrocket-flask.onrender.com/upload"
+
+    try:
+        if pic is None:
+            response = requests.post(url, data=body, timeout=10000)
             if response.status_code == 200:
                 return "Post successful!"
             else:
                 return f"Failed to post. Status code: {response.status_code}"
-        except Exception as e:
-            return f"An error occurred: {str(e)}"
-    else:
-        url = "https://replyrocket-flask.onrender.com/upload"
-        try:
+        else:
             with open(pic, "rb") as file:
                 files = {"file": file}
                 response = requests.post(url, files=files, data=body, timeout=10000)
@@ -121,8 +114,8 @@ def post_on_linkedin(text, pic=None):
                     return "Post successful!"
                 else:
                     return f"Failed to post. Status code: {response.status_code}"
-        except Exception as e:
-            return f"An error occurred: {str(e)}"
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 
 
 def make_post(linkedin_post, twitter_post, pic=None):
@@ -350,13 +343,20 @@ if st.session_state.start_chat:
                         + ". make sure that you do not generate images with texts in it."
                     )
                     image_url = generate_image(prompt)
-                    client.beta.threads.runs.submit_tool_outputs(
-                        thread_id=st.session_state.thread_id,
-                        run_id=run.id,
-                        tool_outputs=[
-                            {"tool_call_id": tool_call.id, "output": image_url}
-                        ],
-                    )
+                    try:
+                        client.beta.threads.runs.submit_tool_outputs(
+                            thread_id=st.session_state.thread_id,
+                            run_id=run.id,
+                            tool_outputs=[
+                                {"tool_call_id": tool_call.id, "output": image_url}
+                            ],
+                        )
+                    except Exception as e:
+                        st.session_state.messages.append(
+                            {"role": "assistant", "content": e}
+                        )
+                        with st.chat_message("assistant"):
+                            st.markdown(e)
                 elif tool_call.function.name == "make_post":
                     print("make post initiated...")
                     linkedin_post = json.loads(tool_call.function.arguments).get(
@@ -377,11 +377,20 @@ if st.session_state.start_chat:
                         data = make_post(linkedin_post, twitter_post, path)
                     else:
                         data = make_post(linkedin_post, twitter_post)
-                    client.beta.threads.runs.submit_tool_outputs(
-                        thread_id=st.session_state.thread_id,
-                        run_id=run.id,
-                        tool_outputs=[{"tool_call_id": tool_call.id, "output": data}],
-                    )
+                    try:
+                        client.beta.threads.runs.submit_tool_outputs(
+                            thread_id=st.session_state.thread_id,
+                            run_id=run.id,
+                            tool_outputs=[
+                                {"tool_call_id": tool_call.id, "output": data}
+                            ],
+                        )
+                    except Exception as e:
+                        st.session_state.messages.append(
+                            {"role": "assistant", "content": e}
+                        )
+                        with st.chat_message("assistant"):
+                            st.markdown(e)
                 elif tool_call.function.name == "add_to_notion":
                     print("add to notion initiated...")
                     linkedin_post = json.loads(tool_call.function.arguments).get(
@@ -420,11 +429,20 @@ if st.session_state.start_chat:
                             twitter_post,
                             twitter_post_date,
                         )
-                    client.beta.threads.runs.submit_tool_outputs(
-                        thread_id=st.session_state.thread_id,
-                        run_id=run.id,
-                        tool_outputs=[{"tool_call_id": tool_call.id, "output": data}],
-                    )
+                    try:
+                        client.beta.threads.runs.submit_tool_outputs(
+                            thread_id=st.session_state.thread_id,
+                            run_id=run.id,
+                            tool_outputs=[
+                                {"tool_call_id": tool_call.id, "output": data}
+                            ],
+                        )
+                    except Exception as e:
+                        st.session_state.messages.append(
+                            {"role": "assistant", "content": e}
+                        )
+                        with st.chat_message("assistant"):
+                            st.markdown(e)
 
         messages = client.beta.threads.messages.list(
             thread_id=st.session_state.thread_id
