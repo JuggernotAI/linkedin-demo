@@ -55,24 +55,26 @@ if st.session_state.start_chat:
     if prompt := st.chat_input("What is up?"):
         # Add user message to the state and display it
         st.session_state.messages.append({"role": "user", "content": prompt})
+
         with st.chat_message("user"):
             st.markdown(prompt)
-            full_response = get_response_openai(prompt)
-            if st.session_state.image_count > st.session_state.image_count_temp:
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "image": st.session_state.image_paths[-1],
-                    }
-                )
-                with st.chat_message("assistant"):
-                    st.image(st.session_state.image_paths[-1])
-                st.session_state.image_count_temp += 1
-            else:
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": full_response}
-                )
-                with st.chat_message("assistant"):
-                    st.markdown(full_response, unsafe_allow_html=True)
+
+        full_response = get_response_openai(prompt)
+        if st.session_state.image_count > st.session_state.image_count_temp:
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "image": st.session_state.image_paths[-1],
+                }
+            )
+            with st.chat_message("assistant"):
+                st.image(st.session_state.image_paths[-1])
+            st.session_state.image_count_temp += 1
+        else:
+            st.session_state.messages.append(
+                {"role": "assistant", "content": full_response}
+            )
+            with st.chat_message("assistant"):
+                st.markdown(full_response, unsafe_allow_html=True)
 else:
     st.write("Please click 'Start Chat' to begin the conversation.")
