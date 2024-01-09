@@ -15,6 +15,7 @@ import notion_helper
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+import csv, smtplib, ssl
  
 load_dotenv()
  
@@ -48,10 +49,11 @@ def generate_image(prompt, size="1024x1024"):
         n=1,
         quality="standard",
     )
-    path = os.path.join("./dalle", str(round(time.time() * 1000)) + ".png")
+    # path = os.path.join("./dalle", str(round(time.time() * 1000)) + ".png")
     image_url = response.data[0].url
-    Image.open(requests.get(image_url, stream=True).raw).save(path)
-    st.session_state.image_paths.append(path)
+    # Image.open(requests.get(image_url, stream=True).raw).save(path)
+    st.session_state.image_paths.append(image_url)
+    print(image_url)
     st.session_state.image_count += 1
     return image_url
  
@@ -179,33 +181,68 @@ def add_to_notion(
         res = notion_helper.create_page(data)
  
     return res
- 
 # Email functionality
 def get_email_addresses(excel_file):
     df = pd.read_excel(excel_file)
     return df['email'].tolist()  # Replace with your column name
  
-def send_email(subject, body, recipient_email, image_path):
-    sender_email = "rental@flash-tech.co"  # Replace with your email
-    sender_password = "Rental@009"      # Replace with your password
+def send_call(subject, body, recipient_email, image_path):
+    sender_email = os.getenv("SENDER_EMAIL")  # Replace with your email
+    sender_password = os.getenv("SENDER_PASSWORD")
+    # print(send_email, sender_password)      # Replace with your password
  
-    message = MIMEMultipart()
-    message['From'] = sender_email
-    message['To'] = recipient_email
-    message['Subject'] = subject
-    message.attach(MIMEText(body, 'plain'))
+    # message = MIMEMultipart()
+    # message['From'] = sender_email
+    # message['To'] = recipient_email
+    # message['Subject'] = subject
+    # message.attach(MIMEText(body, 'plain'))
+    # if image_path is not None:
+    #     with open(image_path, 'rb') as f:
+    #         img = MIMEImage(f.read())
+    #         img.add_header('Content-Disposition', 'attachment', filename=os.path.basename(image_path))
+    #         message.attach(img)
  
-    with open(image_path, 'rb') as f:
-        img = MIMEImage(f.read())
-        img.add_header('Content-Disposition', 'attachment', filename=os.path.basename(image_path))
-        message.attach(img)
- 
-    session = smtplib.SMTP('smtp.gmail.com', 587)
-    session.starttls()
-    session.login(sender_email, sender_password)
-    session.sendmail(sender_email, recipient_email, message.as_string())
-    session.quit()
- 
+    # session = smtplib.SMTP('smtp.gmail.com', 587)
+    # session.starttls()
+    # session.login(sender_email, sender_password)
+    # session.sendmail(sender_email, recipient_email, message.as_string())
+    # session.quit()
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.ehlo()
+    server.starttls()
+    server.ehlo()
+
+    server.login(sender_email, sender_password)
+
+    msg = f"Subject: {subject}\n\n{body}"
+
+    server.sendmail(
+        sender_email,
+        recipient_email,
+        msg
+    )
+    print("An E-Mail has been sent")
+
+    server.quit()
+
+
+def send_email(subject, body): 
+    if excel_file is not None:
+        email_list = get_email_addresses(excel_file)
+        image_path = st.sidebar.text_input("Enter the path of the image to attach:")
+        # if image_path is not None:
+        #     print(image_path)
+        #     for email in email_list:
+        #         send_call(subject, body, email, image_path)
+        #         st.sidebar.success(f"Email sent to {email}")
+        # else:
+        for email in email_list:
+            send_call(subject, body, email, image_path=None)
+            st.sidebar.success(f"Email sent to {email}")
+    else:
+            st.sidebar.error("Please attach a mailing list to begin.")
+    return f"Email sent to {email}"
+
 # Start Chat Button
 if st.sidebar.button("Start Chat"):
     st.session_state.start_chat = True
@@ -223,20 +260,11 @@ st.write(
  
  
 # Email Blasting Feature
-st.sidebar.title("Email Blasting Feature")
-excel_file = st.sidebar.file_uploader("Upload Excel File with Email Addresses", type=["xlsx"])
-if excel_file is not None:
-    email_list = get_email_addresses(excel_file)
-    subject = st.sidebar.text_input("Enter the subject for the email:")
-    body = st.sidebar.text_area("Enter the body content for the email:")
-    image_path = st.sidebar.text_input("Enter the path of the image to attach:")
-    if st.sidebar.button("Send Emails"):
-        for email in email_list:
-            send_email(subject, body, email, image_path)
-            st.sidebar.success(f"Email sent to {email}")
+
  
 # Only show the chat interface if the chat has been started
 if st.session_state.start_chat:
+    
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "image_count_temp" not in st.session_state:
@@ -245,7 +273,13 @@ if st.session_state.start_chat:
         st.session_state.image_paths = []
     if "image_count" not in st.session_state:
         st.session_state.image_count = 0
- 
+    st.sidebar.title("Email Blasting Feature")
+    excel_file = st.sidebar.file_uploader("Upload Excel File with Email Addresses", type=["xlsx"])
+
+    uploaded_image = st.sidebar.file_uploader("Please upload an image")
+    if uploaded_image is not None:
+        print(uploaded_image)
+        st.sidebar.success("Image Uploaded Succesfully!")
     # Display existing messages in the chat
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -255,7 +289,7 @@ if st.session_state.start_chat:
                 st.markdown(message["content"])
  
     # Chat input for the user
-    if prompt := st.chat_input("What is up?"):
+    if prompt := st.chat_input("Design a post for ...."):
         # Add user message to the state and display it
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -265,6 +299,7 @@ if st.session_state.start_chat:
         client.beta.threads.messages.create(
             thread_id=st.session_state.thread_id, role="user", content=prompt
         )
+        st.sidebar.success("Thread Created")
         run = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
             assistant_id=assistant_id,
@@ -273,7 +308,7 @@ if st.session_state.start_chat:
                     "type": "function",
                     "function": {
                         "name": "generate_image",
-                        "description": "generate image by Dall-e 3",
+                        "description": "generate image by Dall-E 3",
                         "parameters": {
                             "type": "object",
                             "properties": {
@@ -287,6 +322,27 @@ if st.session_state.start_chat:
                                 },
                             },
                             "required": ["prompt"],
+                        },
+                    },
+                },
+               {
+                    "type": "function",
+                    "function": {
+                        "name": "send_email",
+                        "description": "Send mail to a user",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "subject": {
+                                    "type": "string",
+                                    "description": "The subject for the mail",
+                                },
+                                "email-body": {
+                                    "type": "string",
+                                    "description": "The body content for the mail",
+                                },
+                            },
+                            "required": ["subject", "email-body"],
                         },
                     },
                 },
@@ -341,7 +397,7 @@ if st.session_state.start_chat:
                                 },
                                 "image": {
                                     "type": "string",
-                                    "description": "Image URL of the post generated by generate_image function",
+                                    "description": "Image URL of the post",
                                 },
                             },
                             "required": [
@@ -361,6 +417,7 @@ if st.session_state.start_chat:
                 thread_id=st.session_state.thread_id, run_id=run.id
             )
             if run.status == "requires_action":
+                # print("Called Function")
                 tool_call = run.required_action.submit_tool_outputs.tool_calls[0]
                 if tool_call.function.name == "generate_image":
                     print("image generation initiated...")
@@ -385,8 +442,31 @@ if st.session_state.start_chat:
                         )
                         with st.chat_message("assistant"):
                             st.markdown(e)
+                elif tool_call.function.name == "send_email":
+                    print("Sending Email")
+                    with st.chat_message("Assistant"):
+                        st.markdown("I have started sending mail to the users in the mailing list. Please check sidebar for status.")
+                    subject = json.loads(tool_call.function.arguments).get("subject")
+                    body = json.loads(tool_call.function.arguments).get("email-body")
+                    out = send_email(subject, body)
+                    try:
+                        client.beta.threads.runs.submit_tool_outputs(
+                            thread_id=st.session_state.thread_id,
+                            run_id=run.id,
+                            tool_outputs=[
+                                {"tool_call_id": tool_call.id, "output": out}
+                            ],
+                        )
+                    except Exception as e:
+                        st.session_state.messages.append(
+                            {"role": "assistant", "content": e}
+                        )
+                        with st.chat_message("assistant"):
+                            st.markdown(e)
                 elif tool_call.function.name == "make_post":
                     print("make post initiated...")
+                    with st.chat_message("assistant"):
+                        st.markdown("We have started the posting process. Please wait for 60 seconds before continuing.")
                     linkedin_post = json.loads(tool_call.function.arguments).get(
                         "linkedin_post", None
                     )
@@ -402,6 +482,7 @@ if st.session_state.start_chat:
                         Image.open(
                             requests.get(pic, stream=True, timeout=10000).raw
                         ).save(path)
+                        print(path)
                         data = make_post(linkedin_post, twitter_post, path)
                     else:
                         data = make_post(linkedin_post, twitter_post)
@@ -436,13 +517,8 @@ if st.session_state.start_chat:
                     pic = json.loads(tool_call.function.arguments).get("image", None)
                     data = ""
                     if pic is not None:
-                        path = os.path.join(
-                            "./dalle", str(round(time.time() * 1000)) + ".png"
-                        )
-                        Image.open(
-                            requests.get(pic, stream=True, timeout=10000).raw
-                        ).save(path)
- 
+                        path = st.session_state.image_paths[-1]
+                        print(path)
                         data = add_to_notion(
                             linkedin_post,
                             linkedin_post_date,
@@ -475,6 +551,7 @@ if st.session_state.start_chat:
         messages = client.beta.threads.messages.list(
             thread_id=st.session_state.thread_id
         )
+        st.sidebar.success("Retrieving Messages...")
         for message in [
             m for m in messages if m.run_id == run.id and m.role == "assistant"
         ]:

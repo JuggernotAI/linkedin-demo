@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "baani-410407",
+  "private_key_id": "0dacfc709ceca1607f4cb1f394ae1f9bc25404de",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDpTsg87+Opyt4c\nlkbfWuUs+s0a93GiGUXcbdP5VWTnwtRb6/KEyGLZ7+hGbm2/Rm0tqPeMWH6PzWvO\n1dU/2aHz6f3kwlJ75bZurdHZEYGrLj7+uIDLYCuwkVP6pYEX/km0TQwJXUjgsjCx\nEUoNnoZ3OAorKWlyYEDSGNXUr5ZgiDeBUZMnQFYjYL8TgbiOEN2HLhRNl9TEX+RR\n66lLcZsn3RylFznlqhXvCx1bjs2ubTKh2dMDNLvq9j1t8PHsPbSVyswhn8eNThAI\ngh9liQxkYGPjV3lbFdSX60NxiOMvX/BVCSREw35EusPgJq6mLiiaYU2m0c26VjIN\nDT7yV/dHAgMBAAECggEACYqbDkEnhGSW4w6hZSe2tI6oyn40mChLjR+W9M7N5zD9\nteIB84PKAdAn7Ml26jaNIA9cvNFLdmzCs0flsPcEdFgfBAw5/K654GHHcbFmtGcL\n/5kNaZkvt1bhTQP7wD7IfxhMAJxC7vZv9DwY/+CzJ4yT1P64y0QDIqK4749cG0Cx\nHg4r6TOXiUujF8tMG+/Bg+smIvdD6aRwFf4WF4/N7z6yMQwy9qD+e4I8a3bG0sLu\nnkbQEGIBt+WIACmmV+NBSX5KLpwx/uzvioAL1ph1zW9WYRK9UjjrkfQTxK4P6Px4\nJnHj1z71qBOILNOYXQ9AYxJ1sEfiG+p1Y98mMZ2F0QKBgQD2INBjFEtADEoHREqL\nyb8A3SrrHw/OiRjWHwBmf0ZdEdK210wR4KiZ0RUsPD0pCcOJvijCUSbT44WaVh/A\n5sV3KWsBL0B4R+AvIHZm84i8DQIxYNWTm0heVcs7GtzSpAR10sBUJ0EtAqwc63dI\n4kN7mub0cclR9OTjUOHHBmmgFQKBgQDyqlS5RYAK3LENsw323R+8xatYkTOs6cJ3\nAu7cdft4P+v+NK2sUtKDTo/gJkBhcfURu9eZa/YPfxMVzaV7gM5+eLRCMLJUAOjQ\nbPpIhqVzwV1zcQ8zMaH9qCWkNaPr33AASln/3sD+rVK9lx/HVvtpbX5PAwuxmNCi\nNFFkXRb06wKBgEvKfQEVnbqCTkWAlQgIvwVwFahDb2WlN/2vnDrz1GISe/WLxMP4\nj1KWXNO7VQYPGKSQ5xI3VSKIfHqzLKIFLidsnKPHvi2LzJAWif9X3PIze0pjTEFg\n3t8VwjhYJEnE8g6qMEl5sQtAOGnLZHcQHcGxSI9bfqf7JoSNQok8A0ilAoGBALqI\nNhIom3E+DZdzQNO3TDMmWzz8eJV9Ju+mwIeU5ZWcxUIlqi6hh5JJrIznumttVq2o\nD+WuOHnW+4uyBXd3HsPW8vFCT4IFJPE6I/XmEn51b+lSShXXHCdIvo6IcRXaLlT6\n0k2+I+pgvw5fgZ0Qfree5A3GUJHW3uEgiEQ2znO7AoGBAJvlRqH4lv6f/ixYap+W\nt2Oo9fnCkbck8VJjxIRDlzXnmct8A8/1nZaMXKflC229l2kqsrSAQWY4wFT8W7ip\nzdCRZcA6Q0z+N7IM+stg10KuOk/o21XbSn8kxgh2DAFvKzmN+VERR8iFe2EHfJ5r\n9vTkiV1EsQeOoHgSCKNgqgmi\n-----END PRIVATE KEY-----\n",
+  "client_email": "baani-service-account@baani-410407.iam.gserviceaccount.com",
+  "client_id": "111064566116349674388",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/baani-service-account%40baani-410407.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
